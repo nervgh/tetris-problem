@@ -6,12 +6,19 @@ const {
 
 class Figure {
   /**
-   * @param {Array.<Array>.<Number>} m Coordinate pairs (x, y) of a figure as a matrix
+   * @param {Array.<Array>.<Number>|Matrix} m Coordinate pairs (x, y) of a figure as a matrix
    * @param {Number} c Center of a figure relative itself (index of a column)
    */
   constructor (m, c) {
     this.m = new Matrix(m)
     this.c = c
+  }
+  /**
+   * @returns {Figure}
+   */
+  clone () {
+    const {m, c} = this
+    return new this.constructor(m, c)
   }
   /**
    * Calls a callback for each coordinate pair (x, y)
@@ -91,14 +98,69 @@ class Figure {
   }
 }
 
+class TetrisFigure extends Figure {
+  /**
+   * @see http://codenjoy.com/portal/?page_id=10
+   * @param {String} type
+   */
+  static factory (type) {
+    switch (type) {
+      case this.KIND.I:
+        return new this([
+          /* x */ [0, 1, 2, 3],
+          /* y */ [0, 0, 0, 0]
+        ], 1)
+      case this.KIND.O:
+        return new this([
+          /* x */ [0, 0, 1, 1],
+          /* y */ [0, 1, 0, 1]
+        ], 0)
+      case this.KIND.L:
+        return new this([
+          /* x */ [0, 1, 2, 2],
+          /* y */ [0, 0, 0, 1]
+        ], 1)
+      case this.KIND.J:
+        return new this([
+          /* x */ [0, 1, 2, 2],
+          /* y */ [1, 1, 1, 0]
+        ], 1)
+      case this.KIND.S:
+        return new this([
+          /* x */ [1, 1, 0, 0],
+          /* y */ [0, 1, 1, 2]
+        ], 1)
+      case this.KIND.Z:
+        return new this([
+          /* x */ [0, 0, 1, 1],
+          /* y */ [0, 1, 1, 2]
+        ], 2)
+      case this.KIND.T:
+        return new this([
+          /* x */ [1, 0, 1, 1],
+          /* y */ [0, 1, 1, 2]
+        ], 2)
+      default:
+        throw new Error('Unknown figure type')
+    }
+  }
+}
+
+TetrisFigure.KIND = {
+  'I': 'I',
+  'O': 'O',
+  'L': 'L',
+  'J': 'J',
+  'S': 'S',
+  'Z': 'Z',
+  'T': 'T'
+}
+
 const world = Matrix.zeros(20, 10)
 
-const figure = new Figure([
-  /* x */ [2, 3, 4, 5],
-  /* y */ [2, 2, 2, 2]
-], 1)
+const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
 
-figure.each(function (v, x, y) {
+figure.each(function (_, x, y) {
   world.set(x, y, 1)
 })
 
@@ -107,11 +169,10 @@ console.log('world, before', world.toArray())
 // figure.move(1, 0)
 figure.rotate(90)
 
-world.each(function (v, x, y) {
+world.each(function (_, x, y) {
   world.set(x, y, 0)
 })
-
-figure.each(function (v, x, y) {
+figure.each(function (_, x, y) {
   world.set(x, y, 1)
 })
 
