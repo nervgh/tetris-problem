@@ -97,6 +97,12 @@ class Figure {
     // to the absolute coordinate system
     this.m = mRotated.add(mCenter)
   }
+  /**
+   * @return {Array.<Array>.<Number>}
+   */
+  toArray () {
+    return this.m.toArray()
+  }
 }
 
 class TetrisFigure extends Figure {
@@ -157,78 +163,101 @@ TetrisFigure.KIND = {
   'T': 'T'
 }
 
-const world = sampleWorld(20, 10) // Matrix.zeros(20, 10)
+class TetrisWorld {
+  /**
+   * @param {Number} r amount of rows
+   * @param {Number} c amount of columns
+   */
+  constructor (r, c) {
+    this.m = Matrix.zeros(r, c)
+  }
+  /**
+   * @param {Figure} figure
+   */
+  locate (figure) {
+    figure.each((_, x, y) => {
+      this.m.set(x, y, 2)
+    })
+  }
+  /**
+   * @param {Number} [rStart]
+   * @param {Number} [cStart]
+   */
+  sample (rStart = -1, cStart = -1) {
+    const [r, c] = this.m.shape
+    const m = Matrix.random(r, c)
+
+    m.each((v, x, y) => {
+      m.set(x, y, Math.round(v))
+    })
+
+    m.each((v, x, y) => {
+      const nV = x > rStart && y > cStart ? v : 0
+      m.set(x, y, nV)
+    })
+
+    this.m = m
+  }
+  /**
+   * @param {String} [comment]
+   * @return {HTMLElement}
+   */
+  renderToHtmlElement (comment = '') {
+    const rows = this.toArray()
+    const vm = new Vue({
+      el: document.createElement('div'),
+      data () {
+        return {
+          rows,
+          comment
+        }
+      },
+      methods: {
+        getClassName (v) {
+          const classes = {
+            2: 'bg-primary',
+            1: 'bg-secondary'
+          }
+          return classes[v]
+        }
+      },
+      template: `
+        <div>
+          <hr/>
+          <p v-text="comment"></p>
+          <table class="table table-bordered table-hover">
+            <tbody>          
+              <tr v-for="row in rows">
+                <td v-for="cell in row"
+                    v-bind:class="getClassName(cell)">
+                    &nbsp;
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `
+    })
+    return vm.$el
+  }
+  /**
+   * @return {Array.<Array>.<Number>}
+   */
+  toArray () {
+    return this.m.toArray()
+  }
+}
+
+const world = new TetrisWorld(20, 10)
+
+world.sample(11)
 
 const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
 
 // figure.move(1, 0)
 // figure.rotate(90)
 
-figure.each(function (_, x, y) {
-  world.set(x, y, 2)
-})
+world.locate(figure)
 
 const rootHtmlElement = document.getElementById('root')
-rootHtmlElement.appendChild(renderToHtmlElement(world, '1'))
-
-/**
- * @param {Number} r amount of rows
- * @param {Number} c amount of columns
- * @return {Matrix}
- */
-function sampleWorld (r, c) {
-  const world = Matrix.random(r, c) // Matrix.zeros(r, c)
-
-  world.each(function (v, x, y) {
-    world.set(x, y, Math.round(v))
-  })
-
-  world.each(function (v, x, y) {
-    const nV = x > 11 ? v : 0
-    world.set(x, y, nV)
-  })
-
-  return world
-}
-/**
- * @param {Matrix} world
- * @param {String} [comment]
- * @return {HTMLElement}
- */
-function renderToHtmlElement (world, comment = '') {
-  const vm = new Vue({
-    el: document.createElement('div'),
-    data () {
-      return {
-        world: world.toArray(),
-        comment
-      }
-    },
-    methods: {
-      getClassName (v) {
-        const classes = {
-          2: 'bg-primary',
-          1: 'bg-secondary'
-        }
-        return classes[v]
-      }
-    },
-    template: `
-      <div>
-        <hr/>
-        <p v-text="comment"></p>
-        <table class="table table-bordered table-hover">
-          <tbody>          
-            <tr v-for="row in world">
-              <td v-for="cell in row"
-                  v-bind:class="getClassName(cell)">
-                  &nbsp;
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    `
-  })
-  return vm.$el
-}
+rootHtmlElement.appendChild(world.renderToHtmlElement('1'))
