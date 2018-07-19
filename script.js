@@ -159,24 +159,17 @@ TetrisFigure.KIND = {
 
 const world = sampleWorld(20, 10) // Matrix.zeros(20, 10)
 
-// const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
-//
-// figure.each(function (_, x, y) {
-//   world.set(x, y, 1)
-// })
-
-const rootHtmlElement = document.getElementById('root')
-rootHtmlElement.appendChild(renderToHtmlElement(world, '1'))
+const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
 
 // figure.move(1, 0)
 // figure.rotate(90)
-//
-// world.each(function (_, x, y) {
-//   world.set(x, y, 0)
-// })
-// figure.each(function (_, x, y) {
-//   world.set(x, y, 1)
-// })
+
+figure.each(function (_, x, y) {
+  world.set(x, y, 2)
+})
+
+const rootHtmlElement = document.getElementById('root')
+rootHtmlElement.appendChild(renderToHtmlElement(world, '1'))
 
 /**
  * @param {Number} r amount of rows
@@ -211,6 +204,15 @@ function renderToHtmlElement (world, comment = '') {
         comment
       }
     },
+    methods: {
+      getClassName (v) {
+        const classes = {
+          2: 'bg-primary',
+          1: 'bg-secondary'
+        }
+        return classes[v]
+      }
+    },
     template: `
       <div>
         <hr/>
@@ -219,7 +221,7 @@ function renderToHtmlElement (world, comment = '') {
           <tbody>          
             <tr v-for="row in world">
               <td v-for="cell in row"
-                  v-bind:class="{'bg-primary': cell}">
+                  v-bind:class="getClassName(cell)">
                   &nbsp;
               </td>
             </tr>
