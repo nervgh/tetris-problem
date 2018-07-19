@@ -1,7 +1,8 @@
 
 // https://github.com/mateogianolio/vectorious
 const {
-  Matrix
+  Matrix,
+  Vue
 } = window
 
 class Figure {
@@ -156,24 +157,76 @@ TetrisFigure.KIND = {
   'T': 'T'
 }
 
-const world = Matrix.zeros(20, 10)
+const world = sampleWorld(20, 10) // Matrix.zeros(20, 10)
 
-const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
+// const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
+//
+// figure.each(function (_, x, y) {
+//   world.set(x, y, 1)
+// })
 
-figure.each(function (_, x, y) {
-  world.set(x, y, 1)
-})
-
-console.log('world, before', world.toArray())
+const rootHtmlElement = document.getElementById('root')
+rootHtmlElement.appendChild(renderToHtmlElement(world, '1'))
 
 // figure.move(1, 0)
-figure.rotate(90)
+// figure.rotate(90)
+//
+// world.each(function (_, x, y) {
+//   world.set(x, y, 0)
+// })
+// figure.each(function (_, x, y) {
+//   world.set(x, y, 1)
+// })
 
-world.each(function (_, x, y) {
-  world.set(x, y, 0)
-})
-figure.each(function (_, x, y) {
-  world.set(x, y, 1)
-})
+/**
+ * @param {Number} r amount of rows
+ * @param {Number} c amount of columns
+ * @return {Matrix}
+ */
+function sampleWorld (r, c) {
+  const world = Matrix.random(r, c) // Matrix.zeros(r, c)
 
-console.log('world, after', world.toArray())
+  world.each(function (v, x, y) {
+    world.set(x, y, Math.round(v))
+  })
+
+  world.each(function (v, x, y) {
+    const nV = x > 11 ? v : 0
+    world.set(x, y, nV)
+  })
+
+  return world
+}
+/**
+ * @param {Matrix} world
+ * @param {String} [comment]
+ * @return {HTMLElement}
+ */
+function renderToHtmlElement (world, comment = '') {
+  const vm = new Vue({
+    el: document.createElement('div'),
+    data () {
+      return {
+        world: world.toArray(),
+        comment
+      }
+    },
+    template: `
+      <div>
+        <hr/>
+        <p v-text="comment"></p>
+        <table class="table table-bordered table-hover">
+          <tbody>          
+            <tr v-for="row in world">
+              <td v-for="cell in row"
+                  v-bind:class="{'bg-primary': cell}">
+                  &nbsp;
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `
+  })
+  return vm.$el
+}
