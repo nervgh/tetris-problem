@@ -243,6 +243,19 @@ class TetrisWorld {
     })
   }
   /**
+   * @param {Figure} figure
+   * @return {Boolean}
+   */
+  mayLocate (figure) {
+    const c = figure.m.shape[1]
+    const things = new Array(c)
+    figure.each((i, x, y) => {
+      things[i] = this.m.get(x, y)
+    })
+    const {THING} = this.constructor
+    return things.every(v => THING.EMPTY_SPACE === v)
+  }
+  /**
    * @param {Number} [rStart]
    * @param {Number} [cStart]
    */
@@ -331,13 +344,9 @@ world.sample(11)
 
 const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
 
-console.log('figure::bounds::before', figure.getBounds())
-
 // figure.move([1, 0])
 // figure.rotate(90)
 // figure.translate([3, 4])
-
-console.log('figure::bounds::after', figure.getBounds())
 
 world.locate(figure)
 
