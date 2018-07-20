@@ -226,11 +226,20 @@ class TetrisWorld {
     return new TetrisWorld(this.m)
   }
   /**
+   * Liberates the space that a figure was located
+   * @param {Figure} figure
+   */
+  dislocate (figure) {
+    figure.each((_, x, y) => {
+      this.m.set(x, y, this.constructor.THING.EMPTY_SPACE)
+    })
+  }
+  /**
    * @param {Figure} figure
    */
   locate (figure) {
     figure.each((_, x, y) => {
-      this.m.set(x, y, 2)
+      this.m.set(x, y, this.constructor.THING.FIGURE)
     })
   }
   /**
@@ -242,7 +251,8 @@ class TetrisWorld {
     const m = Matrix.random(r, c)
 
     m.each((v, x, y) => {
-      m.set(x, y, Math.round(v))
+      const nV = Math.round(v) > 0 ? this.constructor.THING.WALL : 0
+      m.set(x, y, nV)
     })
 
     m.each((v, x, y) => {
@@ -257,6 +267,7 @@ class TetrisWorld {
    * @return {HTMLElement}
    */
   renderToHtmlElement (comment = '') {
+    const {THING} = this.constructor
     const rows = this.toArray()
     const vm = new Vue({
       el: document.createElement('div'),
@@ -269,8 +280,8 @@ class TetrisWorld {
       methods: {
         getClassName (v) {
           const classes = {
-            2: 'bg-primary',
-            1: 'bg-secondary'
+            [THING.FIGURE]: 'bg-primary',
+            [THING.WALL]: 'bg-secondary'
           }
           return classes[v]
         }
@@ -302,6 +313,12 @@ class TetrisWorld {
   }
 }
 
+TetrisWorld.THING = {
+  'EMPTY_SPACE': 0,
+  'WALL': 1,
+  'FIGURE': 2
+}
+
 // -----------------------------------
 
 const world = new TetrisWorld(Matrix.zeros(20, 10))
@@ -313,7 +330,7 @@ const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
 console.log('figure::bounds::before', figure.getBounds())
 
 // figure.move([1, 0])
-figure.rotate(90)
+// figure.rotate(90)
 // figure.translate([3, 4])
 
 console.log('figure::bounds::after', figure.getBounds())
@@ -322,3 +339,6 @@ world.locate(figure)
 
 const rootHtmlElement = document.getElementById('root')
 rootHtmlElement.appendChild(world.renderToHtmlElement('1'))
+
+// world.dislocate(figure)
+// rootHtmlElement.appendChild(world.renderToHtmlElement('2'))
