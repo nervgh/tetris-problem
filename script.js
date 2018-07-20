@@ -251,12 +251,16 @@ class TetrisWorld {
     const m = Matrix.random(r, c)
 
     m.each((v, x, y) => {
-      const nV = Math.round(v) > 0 ? this.constructor.THING.WALL : 0
+      const nV = Math.round(v) > 0
+        ? this.constructor.THING.WALL
+        : this.constructor.THING.EMPTY_SPACE
       m.set(x, y, nV)
     })
 
     m.each((v, x, y) => {
-      const nV = x > rStart && y > cStart ? v : 0
+      const nV = x > rStart && y > cStart
+        ? v
+        : this.constructor.THING.EMPTY_SPACE
       m.set(x, y, nV)
     })
 
