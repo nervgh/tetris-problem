@@ -22,6 +22,19 @@ class Figure {
     return new this.constructor(m, c)
   }
   /**
+   * @param {Array.<Number>} vec
+   * @returns {Window.Matrix}
+   */
+  createVectorMatrix (vec) {
+    const c = this.m.shape[1]
+    const [x, y] = vec
+    const aVec = [
+      Array.from({length: c}, _ => x),
+      Array.from({length: c}, _ => y)
+    ]
+    return new Matrix(aVec)
+  }
+  /**
    * Calls a callback for each coordinate pair (x, y)
    * @see https://mateogianolio.com/vectorious/matrix.js.html#line872
    * @param {Function} cb
@@ -31,25 +44,29 @@ class Figure {
     for (let i = 0, j = c; i < c; i += 1, j += 1) {
       const x = this.m.data[i]
       const y = this.m.data[j]
-      cb.call(this, [x, y], x, y)
+      cb.call(this, i, x, y)
     }
   }
   /**
-   * Moves a figure using a bit linear algebra
-   * @param {Number} x
-   * @param {Number} y
+   * Gets center as a vector
+   * @returns {Array.<Number>}
    */
-  move (x, y) {
-    const colCount = this.m.shape[1]
-    const aShift = [
-      Array.from({length: colCount}, _ => y),
-      Array.from({length: colCount}, _ => x)
-    ]
-    const mShift = new Matrix(aShift)
+  getCenter () {
+    const x = this.m.get(0, this.c)
+    const y = this.m.get(1, this.c)
+    return [x, y]
+  }
+  /**
+   * Shifts a figure relative its current position using a bit of linear algebra
+   * @param {Array.<Number>} vec
+   */
+  move (vec) {
+    const [x, y] = vec
+    const mShift = this.createVectorMatrix([y, x])
     this.m.add(mShift)
   }
   /**
-   * Rotates a figure using a bit linear algebra (matrix multiplication)
+   * Rotates a figure using a bit of linear algebra (matrix multiplication)
    * @param {Number} degree
    */
   rotate (degree) {
@@ -77,25 +94,36 @@ class Figure {
     const mR = new Matrix(aR)
 
     // The absolute coordinates of the center of a figure
-    const xVal = this.m.get(0, this.c)
-    const yVal = this.m.get(1, this.c)
-    const colCount = this.m.shape[1]
-    const aCenter = [
-      Array.from({length: colCount}, _ => xVal),
-      Array.from({length: colCount}, _ => yVal)
-    ]
-    const mCenter = new Matrix(aCenter)
+    const vCenter = this.getCenter()
+    const mCenter = this.createVectorMatrix(vCenter)
 
-    // Before rotation we should convert figure's position
-    // to the relative coordinate system
-    const mCentered = this.m.subtract(mCenter)
+    // Converting figure's position to the relative coordinate system
+    this.m.subtract(mCenter)
 
     // Rotating of a figure
-    const mRotated = mR.multiply(mCentered)
+    const mRotated = mR.multiply(this.m)
 
-    // After rotation we should convert figure's position
-    // to the absolute coordinate system
+    // Converting figure's position to the absolute coordinate system
     this.m = mRotated.add(mCenter)
+  }
+  /**
+   * Moves every point of a figure by the same amount in a given direction
+   * @see https://en.wikipedia.org/wiki/Translation_(geometry)
+   * @param {Array.<Number>} vec
+   */
+  translate (vec) {
+    // The absolute coordinates of the center of a figure
+    const vCenter = this.getCenter()
+    const mCenter = this.createVectorMatrix(vCenter)
+
+    // Converting figure's position to the relative coordinate system
+    this.m.subtract(mCenter)
+
+    // New absolute coordinates of the center of a figure
+    const mNewCenter = this.createVectorMatrix(vec)
+
+    // Convert figure's position to the absolute coordinate system
+    this.m.add(mNewCenter)
   }
   /**
    * @return {Array.<Array>.<Number>}
@@ -165,11 +193,16 @@ TetrisFigure.KIND = {
 
 class TetrisWorld {
   /**
-   * @param {Number} r amount of rows
-   * @param {Number} c amount of columns
+   * @param {Array.<Array>.<Number>|Matrix} m A world as a matrix
    */
-  constructor (r, c) {
-    this.m = Matrix.zeros(r, c)
+  constructor (m) {
+    this.m = new Matrix(m)
+  }
+  /**
+   * @returns {TetrisWorld}
+   */
+  clone () {
+    return new TetrisWorld(this.m)
   }
   /**
    * @param {Figure} figure
@@ -248,14 +281,17 @@ class TetrisWorld {
   }
 }
 
-const world = new TetrisWorld(20, 10)
+// -----------------------------------
+
+const world = new TetrisWorld(Matrix.zeros(20, 10))
 
 world.sample(11)
 
 const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
 
-// figure.move(1, 0)
+// figure.move([1, 0])
 // figure.rotate(90)
+figure.translate([3, 4])
 
 world.locate(figure)
 
