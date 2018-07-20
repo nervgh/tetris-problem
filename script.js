@@ -48,6 +48,27 @@ class Figure {
     }
   }
   /**
+   * Gets bounds of a figure as a matrix-like array
+   * @return {Array.<Array>.<Number>}
+   */
+  getBounds () {
+    const c = this.m.shape[1]
+    const xs = new Array(c)
+    const ys = new Array(c)
+    this.each((i, x, y) => {
+      xs[i] = x
+      ys[i] = y
+    })
+    const xMin = Math.min(...xs)
+    const yMin = Math.min(...ys)
+    const xMax = Math.max(...xs)
+    const yMax = Math.max(...ys)
+    return [
+      [xMin, xMax],
+      [yMin, yMax]
+    ]
+  }
+  /**
    * Gets center as a vector
    * @returns {Array.<Number>}
    */
@@ -289,9 +310,13 @@ world.sample(11)
 
 const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
 
+console.log('figure::bounds::before', figure.getBounds())
+
 // figure.move([1, 0])
-// figure.rotate(90)
-figure.translate([3, 4])
+figure.rotate(90)
+// figure.translate([3, 4])
+
+console.log('figure::bounds::after', figure.getBounds())
 
 world.locate(figure)
 
