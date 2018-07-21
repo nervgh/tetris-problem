@@ -340,7 +340,8 @@ class TetrisWorld {
         <div>
           <hr/>
           <p v-text="comment"></p>
-          <table class="table table-bordered table-hover">
+          <table class="table table-bordered table-hover"
+                 style="width: 360px;">
             <tbody>          
               <tr v-for="row in rows">
                 <td v-for="cell in row"
