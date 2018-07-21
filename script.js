@@ -156,6 +156,13 @@ class Figure {
 
 class TetrisFigure extends Figure {
   /**
+   * Calculates an id as a sequence of coordinates
+   * @return {String}
+   */
+  get id () {
+    return '[' + String(this.m.data) + ']'
+  }
+  /**
    * @see http://codenjoy.com/portal/?page_id=10
    * @param {String} type
    */
