@@ -226,24 +226,33 @@ class TetrisWorld {
     return new TetrisWorld(this.m)
   }
   /**
+   * TODO: we should use single method for drawing
    * Liberates the space that a figure was located
-   * @param {Figure} figure
+   * @param {TetrisFigure} figure
    */
   dislocate (figure) {
     figure.each((_, x, y) => {
-      this.m.set(x, y, this.constructor.THING.EMPTY_SPACE)
+      const p = [x, y]
+      if (this.inRangePoint(p)) {
+        this.m.set(x, y, this.constructor.THING.EMPTY_SPACE)
+      }
     })
   }
   /**
-   * @param {Figure} figure
+   * TODO: we should use single method for drawing
+   * @param {TetrisFigure} figure
    */
   locate (figure) {
     figure.each((_, x, y) => {
-      this.m.set(x, y, this.constructor.THING.FIGURE)
+      const p = [x, y]
+      if (this.inRangePoint(p)) {
+        this.m.set(x, y, this.constructor.THING.FIGURE)
+      }
     })
   }
   /**
-   * @param {Figure} figure
+   * Checks if a figure overlaps others or not
+   * @param {TetrisFigure} figure
    * @return {Boolean}
    */
   mayLocate (figure) {
@@ -254,6 +263,30 @@ class TetrisWorld {
     })
     const {THING} = this.constructor
     return things.every(v => THING.EMPTY_SPACE === v)
+  }
+  /**
+   * Checks if a figure inside of the world or not
+   * @param {TetrisFigure} figure
+   * @return {Boolean}
+   */
+  inRange (figure) {
+    const bounds = figure.getBounds()
+    const p1 = [bounds[0][0], bounds[0][1]]
+    const p2 = [bounds[1][0], bounds[1][1]]
+    return this.inRangePoint(p1) && this.inRangePoint(p2)
+  }
+  /**
+   * Checks if a point inside of the world or not
+   * @param {Array.<Number>} vec
+   * @return {Boolean}
+   */
+  inRangePoint (vec) {
+    const minX = 0
+    const minY = 0
+    const maxX = this.m.shape[0] - 1
+    const maxY = this.m.shape[1] - 1
+    const [x, y] = vec
+    return x >= minX && x <= maxX && y >= minY && y <= maxY
   }
   /**
    * @param {Number} [rStart]
