@@ -1,7 +1,6 @@
 
-// https://github.com/mateogianolio/vectorious
 const {
-  Matrix,
+  Matrix, // https://github.com/mateogianolio/vectorious
   Vue
 } = window
 
@@ -79,7 +78,7 @@ class Figure {
   }
   /**
    * Shifts a figure relative its current position using a bit of linear algebra
-   * @param {Array.<Number>} vec
+   * @param {Array.<Number>} vec A shift in relative coordinates
    */
   move (vec) {
     const [x, y] = vec
@@ -130,7 +129,7 @@ class Figure {
   /**
    * Moves every point of a figure by the same amount in a given direction
    * @see https://en.wikipedia.org/wiki/Translation_(geometry)
-   * @param {Array.<Number>} vec
+   * @param {Array.<Number>} vec A new central point in absolute coordinates
    */
   translate (vec) {
     // The absolute coordinates of the center of a figure
@@ -147,6 +146,7 @@ class Figure {
     this.m.add(mNewCenter)
   }
   /**
+   * Returns two-dimensional array
    * @return {Array.<Array>.<Number>}
    */
   toArray () {
@@ -357,6 +357,7 @@ class TetrisWorld {
     return vm.$el
   }
   /**
+   * Returns two-dimensional array
    * @return {Array.<Array>.<Number>}
    */
   toArray () {
