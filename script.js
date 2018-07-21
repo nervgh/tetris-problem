@@ -7,7 +7,7 @@ const {
 class Figure {
   /**
    * @param {Array.<Array>.<Number>|Matrix} m Coordinate pairs (x, y) of a figure as a matrix
-   * @param {Number} c Center of a figure relative itself (index of a column)
+   * @param {Number} c Center of a figure relative itself (index of a pair)
    */
   constructor (m, c) {
     this.m = new Matrix(m)
@@ -25,12 +25,9 @@ class Figure {
    * @returns {Window.Matrix}
    */
   createVectorMatrix (vec) {
-    const c = this.m.shape[1]
+    const r = this.m.shape[0]
     const [x, y] = vec
-    const aVec = [
-      Array.from({length: c}, _ => x),
-      Array.from({length: c}, _ => y)
-    ]
+    const aVec = Array.from({length: r}, _ => [x, y])
     return new Matrix(aVec)
   }
   /**
@@ -39,11 +36,11 @@ class Figure {
    * @param {Function} cb
    */
   each (cb) {
-    const c = this.m.shape[1]
-    for (let i = 0, j = c; i < c; i += 1, j += 1) {
+    const r = this.m.shape[0]
+    for (let i = 0, j = 1, k = 0; k < r; i += 2, j += 2, k++) {
       const x = this.m.data[i]
       const y = this.m.data[j]
-      cb.call(this, i, x, y)
+      cb.call(this, k, y, x)
     }
   }
   /**
@@ -51,9 +48,9 @@ class Figure {
    * @return {Array.<Array>.<Number>}
    */
   getBounds () {
-    const c = this.m.shape[1]
-    const xs = new Array(c)
-    const ys = new Array(c)
+    const r = this.m.shape[0]
+    const xs = new Array(r)
+    const ys = new Array(r)
     this.each((i, x, y) => {
       xs[i] = x
       ys[i] = y
@@ -63,8 +60,9 @@ class Figure {
     const xMax = Math.max(...xs)
     const yMax = Math.max(...ys)
     return [
-      [xMin, xMax],
-      [yMin, yMax]
+      // x, y
+      [xMin, yMin],
+      [xMax, yMax]
     ]
   }
   /**
@@ -72,8 +70,8 @@ class Figure {
    * @returns {Array.<Number>}
    */
   getCenter () {
-    const x = this.m.get(0, this.c)
-    const y = this.m.get(1, this.c)
+    const x = this.m.get(this.c, 0)
+    const y = this.m.get(this.c, 1)
     return [x, y]
   }
   /**
@@ -81,8 +79,7 @@ class Figure {
    * @param {Array.<Number>} vec A shift in relative coordinates
    */
   move (vec) {
-    const [x, y] = vec
-    const mShift = this.createVectorMatrix([y, x])
+    const mShift = this.createVectorMatrix(vec)
     this.m.add(mShift)
   }
   /**
@@ -121,7 +118,7 @@ class Figure {
     this.m.subtract(mCenter)
 
     // Rotating of a figure
-    const mRotated = mR.multiply(this.m)
+    const mRotated = this.m.multiply(mR)
 
     // Converting figure's position to the absolute coordinate system
     this.m = mRotated.add(mCenter)
@@ -163,45 +160,66 @@ class TetrisFigure extends Figure {
     return '[' + String(this.m.data) + ']'
   }
   /**
-   * @see http://codenjoy.com/portal/?page_id=10
+   * @see http://codenjoy.com/portal/?p=170
    * @param {String} type
    */
   static factory (type) {
     switch (type) {
       case this.KIND.I:
         return new this([
-          /* x */ [0, 1, 2, 3],
-          /* y */ [0, 0, 0, 0]
+          // x, y
+          [0, 0],
+          [0, 1],
+          [0, 2],
+          [0, 3]
         ], 1)
       case this.KIND.O:
         return new this([
-          /* x */ [0, 0, 1, 1],
-          /* y */ [0, 1, 0, 1]
+          // x, y
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 1]
         ], 0)
       case this.KIND.L:
         return new this([
-          /* x */ [0, 1, 2, 2],
-          /* y */ [0, 0, 0, 1]
+          // x, y
+          [0, 0],
+          [0, 1],
+          [0, 2],
+          [1, 2]
         ], 1)
       case this.KIND.J:
         return new this([
-          /* x */ [0, 1, 2, 2],
-          /* y */ [1, 1, 1, 0]
+          // x, y
+          [1, 0],
+          [1, 1],
+          [1, 2],
+          [0, 2]
         ], 1)
       case this.KIND.S:
         return new this([
-          /* x */ [1, 1, 0, 0],
-          /* y */ [0, 1, 1, 2]
+          // x, y
+          [0, 1],
+          [1, 1],
+          [1, 0],
+          [2, 0]
         ], 1)
       case this.KIND.Z:
         return new this([
-          /* x */ [0, 0, 1, 1],
-          /* y */ [0, 1, 1, 2]
+          // x, y
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [2, 1]
         ], 2)
       case this.KIND.T:
         return new this([
-          /* x */ [1, 0, 1, 1],
-          /* y */ [0, 1, 1, 2]
+          // x, y
+          [0, 1],
+          [1, 0],
+          [1, 1],
+          [2, 1]
         ], 2)
       default:
         throw new Error('Unknown figure type')
@@ -238,10 +256,10 @@ class TetrisWorld {
    * @param {TetrisFigure} figure
    */
   dislocate (figure) {
-    figure.each((_, x, y) => {
+    figure.each((_, y, x) => {
       const p = [x, y]
       if (this.inRangePoint(p)) {
-        this.m.set(x, y, this.constructor.THING.EMPTY_SPACE)
+        this.m.set(y, x, this.constructor.THING.EMPTY_SPACE)
       }
     })
   }
@@ -250,10 +268,10 @@ class TetrisWorld {
    * @param {TetrisFigure} figure
    */
   locate (figure) {
-    figure.each((_, x, y) => {
+    figure.each((_, y, x) => {
       const p = [x, y]
       if (this.inRangePoint(p)) {
-        this.m.set(x, y, this.constructor.THING.FIGURE)
+        this.m.set(y, x, this.constructor.THING.FIGURE)
       }
     })
   }
@@ -265,8 +283,8 @@ class TetrisWorld {
   mayLocate (figure) {
     const c = figure.m.shape[1]
     const things = new Array(c)
-    figure.each((i, x, y) => {
-      things[i] = this.m.get(x, y)
+    figure.each((i, y, x) => {
+      things[i] = this.m.get(y, x)
     })
     const {THING} = this.constructor
     return things.every(v => THING.EMPTY_SPACE === v)
@@ -277,9 +295,7 @@ class TetrisWorld {
    * @return {Boolean}
    */
   inRange (figure) {
-    const bounds = figure.getBounds()
-    const p1 = [bounds[0][0], bounds[0][1]]
-    const p2 = [bounds[1][0], bounds[1][1]]
+    const [p1, p2] = figure.getBounds()
     return this.inRangePoint(p1) && this.inRangePoint(p2)
   }
   /**
@@ -290,31 +306,31 @@ class TetrisWorld {
   inRangePoint (vec) {
     const minX = 0
     const minY = 0
-    const maxX = this.m.shape[0] - 1
-    const maxY = this.m.shape[1] - 1
+    const maxX = this.m.shape[1] - 1
+    const maxY = this.m.shape[0] - 1
     const [x, y] = vec
     return x >= minX && x <= maxX && y >= minY && y <= maxY
   }
   /**
-   * @param {Number} [rStart]
-   * @param {Number} [cStart]
+   * @param {Number} [xStart]
+   * @param {Number} [yStart]
    */
-  sample (rStart = -1, cStart = -1) {
+  sample (xStart = -1, yStart = -1) {
     const [r, c] = this.m.shape
     const m = Matrix.random(r, c)
 
-    m.each((v, x, y) => {
+    m.each((v, y, x) => {
       const nV = Math.round(v) > 0
         ? this.constructor.THING.WALL
         : this.constructor.THING.EMPTY_SPACE
-      m.set(x, y, nV)
+      m.set(y, x, nV)
     })
 
-    m.each((v, x, y) => {
-      const nV = x > rStart && y > cStart
+    m.each((v, y, x) => {
+      const nV = y > yStart && x > xStart
         ? v
         : this.constructor.THING.EMPTY_SPACE
-      m.set(x, y, nV)
+      m.set(y, x, nV)
     })
 
     this.m = m
@@ -382,7 +398,7 @@ TetrisWorld.THING = {
 
 const world = new TetrisWorld(Matrix.zeros(20, 10))
 
-world.sample(11)
+world.sample(-1, 11)
 
 const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
 
