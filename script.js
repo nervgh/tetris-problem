@@ -51,7 +51,7 @@ class Figure {
     const r = this.m.shape[0]
     const xs = new Array(r)
     const ys = new Array(r)
-    this.each((i, x, y) => {
+    this.each((i, y, x) => {
       xs[i] = x
       ys[i] = y
     })
@@ -245,10 +245,30 @@ class TetrisWorld {
     this.m = new Matrix(m)
   }
   /**
+   * @returns {Number}
+   */
+  get width () {
+    return this.m.shape[1]
+  }
+  /**
+   * @returns {Number}
+   */
+  get height () {
+    return this.m.shape[0]
+  }
+  /**
    * @returns {TetrisWorld}
    */
   clone () {
     return new TetrisWorld(this.m)
+  }
+  /**
+   * @param {Number} x
+   * @param {Number} y
+   * @returns {*}
+   */
+  get (x, y) {
+    return this.m.get(y, x)
   }
   /**
    * TODO: we should use single method for drawing
@@ -284,7 +304,10 @@ class TetrisWorld {
     const c = figure.m.shape[1]
     const things = new Array(c)
     figure.each((i, y, x) => {
-      things[i] = this.m.get(y, x)
+      const p = [x, y]
+      if (this.inRangePoint(p)) {
+        things[i] = this.m.get(y, x)
+      }
     })
     const {THING} = this.constructor
     return things.every(v => THING.EMPTY_SPACE === v)
@@ -306,8 +329,8 @@ class TetrisWorld {
   inRangePoint (vec) {
     const minX = 0
     const minY = 0
-    const maxX = this.m.shape[1] - 1
-    const maxY = this.m.shape[0] - 1
+    const maxX = this.width - 1
+    const maxY = this.height - 1
     const [x, y] = vec
     return x >= minX && x <= maxX && y >= minY && y <= maxY
   }
@@ -316,8 +339,7 @@ class TetrisWorld {
    * @param {Number} [yStart]
    */
   sample (xStart = -1, yStart = -1) {
-    const [r, c] = this.m.shape
-    const m = Matrix.random(r, c)
+    const m = Matrix.random(this.height, this.width)
 
     m.each((v, y, x) => {
       const nV = Math.round(v) > 0
@@ -364,15 +386,26 @@ class TetrisWorld {
           <hr/>
           <p v-text="comment"></p>
           <table class="table table-bordered table-hover"
-                 style="width: 360px;">
+                 style="width: 380px;">
             <tbody>          
-              <tr v-for="row in rows">
+              <tr v-for="(row, idx) in rows">
+                <td v-text="idx"
+                    class="text-right text-muted"></td>
                 <td v-for="cell in row"
-                    v-bind:class="getClassName(cell)">
+                    v-bind:class="getClassName(cell)"
+                    style="width: 34px; height: 34px;">
                     &nbsp;
                 </td>
               </tr>
             </tbody>
+            <tfoot>
+              <tr>
+              <td>&nbsp;</td>
+               <td v-for="(cell, idx) in rows[0]"
+                   v-text="idx"
+                   class="text-right text-muted"></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       `
@@ -394,22 +427,119 @@ TetrisWorld.THING = {
   'FIGURE': 2
 }
 
+class TetrisProblemSolver {
+  /**
+   * @param {TetrisWorld} world
+   * @param {TetrisFigure} figure
+   * @returns {Array.<TetrisFigure>}
+   */
+  static solve (world, figure) {
+    const {THING} = world.constructor
+
+    // We want to find the lowest appropriate cell
+    for (let y = world.height - 1; y >= 0; y--) {
+      // We need the coordinates of cells in this row
+      const row = Array.from({length: world.width}, (_, x) => [x, y])
+
+      console.log('y', y)
+
+      // We are interesting with empty cells only
+      const cells = row.filter(p => world.get(p[0], p[1]) === THING.EMPTY_SPACE)
+
+      console.log('empty cells', cells)
+
+      // We have all permutations here (states) without duplicates
+      const untrustedStates = this.getPermutationsOfFigureAtPoints(figure, cells)
+
+      console.log('untrustedStates', untrustedStates.map(fg => fg.toArray()))
+
+      // But we have to validate these states. Can they be located in the world?
+      const states = this.__getLocatableStatesOnly(world, untrustedStates)
+
+      console.log('states', states.map(fg => fg.toArray()))
+
+      if (states.length > 0) {
+        world.locate(states[0])
+        break
+      }
+    }
+
+    return []
+  }
+  /**
+   * Gets all possible permutations of a figure at certain point
+   * @param {TetrisFigure} figure
+   * @param {Array.<Number>} vec
+   * @return {Array.<TetrisFigure>}
+   */
+  static getPermutationsOfFigureAtPoint (figure, vec) {
+    const a = figure.clone()
+    a.translate(vec)
+    const b = a.clone()
+    const c = a.clone()
+    const d = a.clone()
+    b.rotate(90)
+    c.rotate(180)
+    d.rotate(270)
+    return [a, b, c, d]
+  }
+  /**
+   * Gets all possible permutations of a figure at certain point
+   * @param {TetrisFigure} figure
+   * @param {Array.<Number>} points
+   * @return {Array.<TetrisFigure>}
+   */
+  static getPermutationsOfFigureAtPoints (figure, points) {
+    const step = 4
+    const len = points.length
+    const arr = new Array(len * step)
+    for (let i = 0, k = 0; i < len; i++, k += step) {
+      const p = points[i]
+      const [a, b, c, d] = this.getPermutationsOfFigureAtPoint(figure, p)
+      arr[k] = a
+      arr[k + 1] = b
+      arr[k + 2] = c
+      arr[k + 3] = d
+    }
+    // Perhaps we have duplications here, so we need to exclude them
+    const unique = new Map()
+    for (const fg of arr) {
+      unique.set(fg.id, fg)
+    }
+    return [...unique.values()]
+  }
+  /**
+   * @param {TetrisWorld} world
+   * @param {Array.<TetrisFigure>} states
+   * @return {Array.<TetrisFigure>}
+   * @private
+   */
+  static __getLocatableStatesOnly (world, states) {
+    return states.filter(figure => {
+      return world.inRange(figure) && world.mayLocate(figure)
+    })
+  }
+}
+
 // -----------------------------------
 
 const world = new TetrisWorld(Matrix.zeros(20, 10))
 
 world.sample(-1, 11)
 
-const figure = TetrisFigure.factory(TetrisFigure.KIND.T)
+const figure = TetrisFigure.factory(TetrisFigure.KIND.I)
 
 // figure.move([1, 0])
 // figure.rotate(90)
 // figure.translate([3, 4])
 
-world.locate(figure)
-
 const rootHtmlElement = document.getElementById('root')
+
+world.locate(figure)
 rootHtmlElement.appendChild(world.renderToHtmlElement('1'))
 
-// world.dislocate(figure)
-// rootHtmlElement.appendChild(world.renderToHtmlElement('2'))
+world.dislocate(figure)
+
+const sequence = TetrisProblemSolver.solve(world, figure)
+
+rootHtmlElement.appendChild(world.renderToHtmlElement('2'))
