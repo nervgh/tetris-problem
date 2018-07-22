@@ -441,20 +441,27 @@ class TetrisProblemSolver {
       // We need the coordinates of cells in this row
       const row = Array.from({length: world.width}, (_, x) => [x, y])
 
-      console.log('y', y)
+      // console.log('y', y)
 
       // We are interesting with empty cells only
       const cells = row.filter(p => world.get(p[0], p[1]) === THING.EMPTY_SPACE)
 
-      console.log('empty cells', cells)
+      // console.log('empty cells', cells)
 
-      // We have all permutations here (states) without duplicates
+      // We have all permutations (states) here without duplicates
       const untrustedStates = this.getPermutationsOfFigureAtPoints(figure, cells)
 
-      console.log('untrustedStates', untrustedStates.map(fg => fg.toArray()))
+      // console.log('untrustedStates', untrustedStates.map(fg => fg.toArray()))
 
       // But we have to validate these states. Can they be located in the world?
-      const states = this.__getLocatableStatesOnly(world, untrustedStates)
+      const states = this.getLocatableStatesOnly(world, untrustedStates)
+
+      // We have to order the states using domain knowledge
+      states.sort((a, b) => {
+        const estA = this.estimateLocationOfFigure(world, figure, a)
+        const estB = this.estimateLocationOfFigure(world, figure, b)
+        return estB - estA
+      })
 
       console.log('states', states.map(fg => fg.toArray()))
 
@@ -512,24 +519,79 @@ class TetrisProblemSolver {
    * @param {TetrisWorld} world
    * @param {Array.<TetrisFigure>} states
    * @return {Array.<TetrisFigure>}
-   * @private
    */
-  static __getLocatableStatesOnly (world, states) {
+  static getLocatableStatesOnly (world, states) {
     return states.filter(figure => {
       return world.inRange(figure) && world.mayLocate(figure)
     })
   }
+  /**
+   * @param {TetrisWorld} world
+   * @param {TetrisFigure} goal Initial figure position
+   * @param {TetrisFigure} test Estimated figure position
+   * @returns {Number}
+   */
+  static estimateLocationOfFigure (world, goal, test) {
+    const [p1, p2] = test.getBounds()
+    const {THING} = world.constructor
+    let k = 0 // amount of not empty cells
+    world.locate(test)
+    for (let y = p1[1]; y <= p2[1]; y++) {
+      for (let x = 0; x < world.width; x++) {
+        k += world.get(x, y) !== THING.EMPTY_SPACE
+      }
+    }
+    world.dislocate(test)
+    const n = (p2[1] - p1[1] + 1) * world.width // amount of all cells
+    const mean = k / n
+    // TODO: Should we add the distance to the goal to an estimation?
+    const distance = this.distanceManhattan(goal.getCenter(), test.getCenter())
+    return mean - distance
+  }
+  /**
+   * @see https://github.com/nervgh/nervgh.github.io/blob/master/sandbox/state-space/heuristic/src/Vector2.js
+   * @param {Array.<Number>} p1
+   * @param {Array.<Number>} p2
+   * @returns {Number}
+   */
+  static distanceManhattan (p1, p2) {
+    return Math.abs(p1[0] - p2[0]) + Math.abs(p1[1] - p2[1])
+  }
+}
+
+// ----------------------------------
+
+/**
+ * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
+ * @param {Number} min
+ * @param {Number} max
+ * @return {Number}
+ */
+function getRandomIntInclusive (min, max) {
+  min = Math.ceil(min)
+  max = Math.floor(max)
+  // The maximum is inclusive and the minimum is inclusive
+  return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
 // -----------------------------------
 
 const world = new TetrisWorld(Matrix.zeros(20, 10))
 
+// Sampling of walls
 world.sample(-1, 11)
 
-const figure = TetrisFigure.factory(TetrisFigure.KIND.I)
+// Getting random kind of figure
+const kinds = Object.keys(TetrisFigure.KIND)
+const randomKind = getRandomIntInclusive(0, kinds.length - 1)
 
-// figure.move([1, 0])
+// Setting random X coordinate of that figure
+const figure = TetrisFigure.factory(kinds[randomKind])
+const [bPointA, bPointB] = figure.getBounds()
+const minX = bPointA[0]
+const maxX = (world.width - 1) - bPointB[0]
+const randomX = getRandomIntInclusive(minX, maxX)
+figure.move([randomX, 0])
 // figure.rotate(90)
 // figure.translate([3, 4])
 
@@ -540,6 +602,8 @@ rootHtmlElement.appendChild(world.renderToHtmlElement('1'))
 
 world.dislocate(figure)
 
+console.time('planning time')
 const sequence = TetrisProblemSolver.solve(world, figure)
+console.timeEnd('planning time')
 
 rootHtmlElement.appendChild(world.renderToHtmlElement('2'))
