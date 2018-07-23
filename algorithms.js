@@ -45,7 +45,8 @@ class PriorityQueue {
   get (item) {
     const itemId = this.id(item)
     const idx = this.__queue.findIndex(x => x[1] === itemId)
-    return this.__queue[idx]
+    const [cost, id, foundItem] = this.__queue[idx]
+    return foundItem
   }
   /**
    * @returns {Number}
@@ -71,9 +72,15 @@ class PriorityQueue {
   }
 }
 class GraphNode {
-  constructor (state = null) {
+  /**
+   * @param {*} state
+   * @param {GraphNode} parent Parent node
+   * @param {Number} pathCost
+   */
+  constructor (state = null, parent = null, pathCost = 0) {
     this.state = state
-    this.pathCost = 0
+    this.parent = parent // parent node
+    this.pathCost = pathCost
   }
 }
 /**
@@ -135,7 +142,3 @@ function astarGraphSearch (initialNode, {id, h, isGoal, getSuccessorsOf}) {
   const f = n => n.pathCost + h(n)
   return bestFirstGraphSearch(initialNode, {id, f, isGoal, getSuccessorsOf})
 }
-
-// exports
-window.GraphNode = GraphNode
-window.astarGraphSearch = astarGraphSearch

@@ -4,6 +4,17 @@ const {
   Vue
 } = window
 
+/*
+  Other dependencies
+
+    Data structures and algorithms:
+      + GraphNode
+      + astarGraphSearch
+
+    utils:
+      + getRandomIntInclusive
+ */
+
 class Figure {
   /**
    * @param {Array.<Array>.<Number>|Matrix} m Coordinate pairs (x, y) of a figure as a matrix
@@ -34,6 +45,7 @@ class Figure {
    * Calls a callback for each coordinate pair (x, y)
    * @see https://mateogianolio.com/vectorious/matrix.js.html#line872
    * @param {Function} cb
+   * @returns {Figure}
    */
   each (cb) {
     const r = this.m.shape[0]
@@ -42,6 +54,7 @@ class Figure {
       const y = this.m.data[j]
       cb.call(this, k, y, x)
     }
+    return this
   }
   /**
    * Gets bounds of a figure as a matrix-like array
@@ -77,14 +90,17 @@ class Figure {
   /**
    * Shifts a figure relative its current position using a bit of linear algebra
    * @param {Array.<Number>} vec A shift in relative coordinates
+   * @returns {Figure}
    */
   move (vec) {
     const mShift = this.createVectorMatrix(vec)
     this.m.add(mShift)
+    return this
   }
   /**
    * Rotates a figure using a bit of linear algebra (matrix multiplication)
    * @param {Number} degree
+   * @returns {Figure}
    */
   rotate (degree) {
     const rotations = {
@@ -122,11 +138,14 @@ class Figure {
 
     // Converting figure's position to the absolute coordinate system
     this.m = mRotated.add(mCenter)
+
+    return this
   }
   /**
    * Moves every point of a figure by the same amount in a given direction
    * @see https://en.wikipedia.org/wiki/Translation_(geometry)
    * @param {Array.<Number>} vec A new central point in absolute coordinates
+   * @returns {Figure}
    */
   translate (vec) {
     // The absolute coordinates of the center of a figure
@@ -141,6 +160,8 @@ class Figure {
 
     // Convert figure's position to the absolute coordinate system
     this.m.add(mNewCenter)
+
+    return this
   }
   /**
    * Returns two-dimensional array
@@ -456,6 +477,10 @@ class TetrisProblemSolver {
       // But we have to validate these states. Can they be located in the world?
       const states = this.getLocatableStatesOnly(world, untrustedStates)
 
+      if (states.length === 0) {
+        continue
+      }
+
       // We have to order the states using domain knowledge
       states.sort((a, b) => {
         const estA = this.estimateLocationOfFigure(world, figure, a)
@@ -463,11 +488,14 @@ class TetrisProblemSolver {
         return estB - estA
       })
 
-      console.log('states', states.map(fg => fg.toArray()))
+      for (const state of states) {
+        // console.log('state', state.toArray())
 
-      if (states.length > 0) {
-        world.locate(states[0])
-        break
+        const path = this.findPathFromCurrentStateToGoalState(world, state, figure)
+
+        if (path.length > 0) {
+          return path // a sequence of movements and rotations
+        }
       }
     }
 
@@ -557,21 +585,60 @@ class TetrisProblemSolver {
   static distanceManhattan (p1, p2) {
     return Math.abs(p1[0] - p2[0]) + Math.abs(p1[1] - p2[1])
   }
-}
+  /**
+   * @param {TetrisWorld} world
+   * @param {TetrisFigure} currentState
+   * @param {TetrisFigure} goalState
+   * @returns {Array.<TetrisFigure>}
+   */
+  static findPathFromCurrentStateToGoalState (world, currentState, goalState) {
+    const root = new GraphNode(currentState)
 
-// ----------------------------------
+    const astarSearchOptions = {
+      id (node) {
+        return node.state.id
+      },
+      h (node) {
+        // TODO: we should consider all points of a figure
+        return TetrisProblemSolver.distanceManhattan(node.state, goalState)
+      },
+      isGoal (node) {
+        return node.state.id === goalState.id
+      },
+      getSuccessorsOf (node) {
+        const figure = node.state
+        const untrustedStates = [
+          figure.clone().move([0, -1]), // up
+          figure.clone().move([-1, 0]), // left
+          figure.clone().move([1, 0]), // right
+          figure.clone().move([0, 1]), // down
+          // all rotations
+          // TODO: we should check an ability to rotate a figure
+          ...TetrisProblemSolver.getPermutationsOfFigureAtPoint(figure, figure.getCenter())
+        ]
+        const states = TetrisProblemSolver.getLocatableStatesOnly(world, untrustedStates)
+        const nodes = states.map(state => {
+          return new GraphNode(state, node, node.pathCost + 1)
+        })
+        return nodes
+      }
+    }
 
-/**
- * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
- * @param {Number} min
- * @param {Number} max
- * @return {Number}
- */
-function getRandomIntInclusive (min, max) {
-  min = Math.ceil(min)
-  max = Math.floor(max)
-  // The maximum is inclusive and the minimum is inclusive
-  return Math.floor(Math.random() * (max - min + 1)) + min
+    // Algorithm returns the goal node or null
+    // when there is not a path from current node to goal node
+    const goal = astarGraphSearch(root, astarSearchOptions)
+    if (!goal) {
+      return []
+    }
+
+    // Backtrace the path
+    let path = []
+    for (let node = goal; node !== null; node = node.parent) {
+      path.push(node.state)
+    }
+
+    return path
+  }
 }
 
 // -----------------------------------
@@ -597,13 +664,17 @@ figure.move([randomX, 0])
 
 const rootHtmlElement = document.getElementById('root')
 
-world.locate(figure)
-rootHtmlElement.appendChild(world.renderToHtmlElement('1'))
-
-world.dislocate(figure)
-
 console.time('planning time')
 const sequence = TetrisProblemSolver.solve(world, figure)
 console.timeEnd('planning time')
 
-rootHtmlElement.appendChild(world.renderToHtmlElement('2'))
+// Visualize the sequence
+console.log('sequence', sequence)
+
+for (let i = 0; i < sequence.length; i++) {
+  const state = sequence[i]
+  const comment = String(i + 1)
+  world.locate(state)
+  rootHtmlElement.appendChild(world.renderToHtmlElement(comment))
+  world.dislocate(state)
+}
