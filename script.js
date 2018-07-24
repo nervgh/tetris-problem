@@ -562,19 +562,19 @@ class TetrisProblemSolver {
   static estimateLocationOfFigure (world, goal, test) {
     const [p1, p2] = test.getBounds()
     const {THING} = world.constructor
-    let k = 0 // amount of not empty cells
     world.locate(test)
+    const nCol = world.width // amount of all cells per row
+    let rations = 0
     for (let y = p1[1]; y <= p2[1]; y++) {
-      for (let x = 0; x < world.width; x++) {
+      let k = 0 // amount of not empty cells
+      for (let x = 0; x < nCol; x++) {
         k += world.get(x, y) !== THING.EMPTY_SPACE
       }
+      rations += k / nCol // row ratio
     }
     world.dislocate(test)
-    const n = (p2[1] - p1[1] + 1) * world.width // amount of all cells
-    const mean = k / n
-    // TODO: Should we add the distance to the goal to an estimation?
-    const distance = this.distanceManhattan(goal.getCenter(), test.getCenter())
-    return mean - distance
+    const distance = this.distanceManhattanBetweenFigures(goal, test)
+    return rations - distance
   }
   /**
    * @see https://github.com/nervgh/nervgh.github.io/blob/master/sandbox/state-space/heuristic/src/Vector2.js
@@ -582,8 +582,24 @@ class TetrisProblemSolver {
    * @param {Array.<Number>} p2
    * @returns {Number}
    */
-  static distanceManhattan (p1, p2) {
+  static distanceManhattanBetweenPoints (p1, p2) {
     return Math.abs(p1[0] - p2[0]) + Math.abs(p1[1] - p2[1])
+  }
+  /**
+   * @see https://github.com/nervgh/nervgh.github.io/blob/master/sandbox/state-space/heuristic/src/Vector2.js
+   * @param {TetrisFigure} f1
+   * @param {TetrisFigure} f2
+   * @returns {Number}
+   */
+  static distanceManhattanBetweenFigures (f1, f2) {
+    const ps1 = f1.toArray() // points
+    const ps2 = f2.toArray() // points
+    const n = ps1.length
+    let k = 0
+    for (let i = 0; i < n; i++) {
+      k += this.distanceManhattanBetweenPoints(ps1[i], ps2[i])
+    }
+    return k / n
   }
   /**
    * @param {TetrisWorld} world
@@ -599,8 +615,7 @@ class TetrisProblemSolver {
         return node.state.id
       },
       h (node) {
-        // TODO: we should consider all points of a figure
-        return TetrisProblemSolver.distanceManhattan(node.state, goalState)
+        return TetrisProblemSolver.distanceManhattanBetweenFigures(node.state, goalState)
       },
       isGoal (node) {
         return node.state.id === goalState.id
