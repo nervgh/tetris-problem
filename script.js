@@ -554,6 +554,7 @@ class TetrisProblemSolver {
     })
   }
   /**
+   * TODO: we should try to find out more representative estimation
    * @param {TetrisWorld} world
    * @param {TetrisFigure} goal Initial figure position
    * @param {TetrisFigure} test Estimated figure position
@@ -626,7 +627,7 @@ class TetrisProblemSolver {
           figure.clone().move([0, -1]), // up
           figure.clone().move([-1, 0]), // left
           figure.clone().move([1, 0]), // right
-          figure.clone().move([0, 1]), // down
+          // figure.clone().move([0, 1]), // down TODO: Are we be able to make a step down?
           // all rotations
           // TODO: we should check an ability to rotate a figure
           ...TetrisProblemSolver.getPermutationsOfFigureAtPoint(figure, figure.getCenter())
@@ -686,10 +687,31 @@ console.timeEnd('planning time')
 // Visualize the sequence
 console.log('sequence', sequence)
 
-for (let i = 0; i < sequence.length; i++) {
-  const state = sequence[i]
+// for (let i = 0; i < sequence.length; i++) {
+//   const state = sequence[i]
+//   const comment = String(i + 1)
+//   world.locate(state)
+//   rootHtmlElement.appendChild(world.renderToHtmlElement(comment))
+//   world.dislocate(state)
+// }
+
+function renderNextState (seq, i) {
+  if (i >= seq.length) {
+    return
+  }
+  const prevState = seq[i - 1]
+  if (prevState) {
+    world.dislocate(prevState)
+  }
+  const state = seq[i]
   const comment = String(i + 1)
   world.locate(state)
-  rootHtmlElement.appendChild(world.renderToHtmlElement(comment))
-  world.dislocate(state)
+  rootHtmlElement.replaceChild(
+    world.renderToHtmlElement(`#${comment} state`),
+    rootHtmlElement.firstChild
+  )
+
+  setTimeout(_ => renderNextState(seq, i + 1), 500)
 }
+
+renderNextState(sequence, 0)
