@@ -6,7 +6,6 @@ The project is an attempt to solve the Tetris problem with some core AI concepts
 
 ## TODO
 + An agent should not rotate a figure when a figure could not rotated (for example, when a figure strikes the walls)
-+ An agent should use more appropriate estimation of the optimal solution
 + PriorityQueue (data structure) have to use the Heap
 
 ## Helpful links and tools

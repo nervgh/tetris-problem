@@ -488,6 +488,7 @@ class TetrisProblemSolver {
         return estB - estA
       })
 
+      // TODO: We should randomly select states with the same estimation
       for (const state of states) {
         // console.log('state', state.toArray())
 
@@ -537,11 +538,7 @@ class TetrisProblemSolver {
       arr[k + 3] = d
     }
     // Perhaps we have duplications here, so we need to exclude them
-    const unique = new Map()
-    for (const fg of arr) {
-      unique.set(fg.id, fg)
-    }
-    return [...unique.values()]
+    return this.unique(arr, x => x.id)
   }
   /**
    * @param {TetrisWorld} world
@@ -554,28 +551,36 @@ class TetrisProblemSolver {
     })
   }
   /**
-   * TODO: we should try to find out more representative estimation
+   * Returns an estimation of a figure. A maximal estimation is the best one
    * @param {TetrisWorld} world
    * @param {TetrisFigure} goal Initial figure position
    * @param {TetrisFigure} test Estimated figure position
    * @returns {Number}
    */
   static estimateLocationOfFigure (world, goal, test) {
-    const [p1, p2] = test.getBounds()
+    const points = test.toArray()
+    const step = 4
+    const len = points.length
+    const variants = new Array(len * step)
+    for (let i = 0, k = 0; i < len; i++, k += step) {
+      const [x, y] = points[i]
+      variants[k] = [x + 1, y]
+      variants[k + 1] = [x - 1, y]
+      variants[k + 2] = [x, y + 1]
+      variants[k + 3] = [x, y - 1]
+    }
+    const uniq = this.unique(variants, String)
+    const allThings = uniq.filter(p => world.inRangePoint(p))
     const {THING} = world.constructor
     world.locate(test)
-    const nCol = world.width // amount of all cells per row
-    let rations = 0
-    for (let y = p1[1]; y <= p2[1]; y++) {
-      let k = 0 // amount of not empty cells
-      for (let x = 0; x < nCol; x++) {
-        k += world.get(x, y) !== THING.EMPTY_SPACE
-      }
-      rations += k / nCol // row ratio
-    }
+    const notEmptyThingsCount = allThings.reduce((sum, p) => {
+      return sum + (world.get(p[0], p[1]) !== THING.EMPTY_SPACE)
+    }, 0)
+    const ySum = points.reduce((sum, p) => {
+      return sum + p[1]
+    }, 0)
     world.dislocate(test)
-    const distance = this.distanceManhattanBetweenFigures(goal, test)
-    return rations - distance
+    return (notEmptyThingsCount / allThings.length) + (ySum / len)
   }
   /**
    * @see https://github.com/nervgh/nervgh.github.io/blob/master/sandbox/state-space/heuristic/src/Vector2.js
@@ -654,6 +659,18 @@ class TetrisProblemSolver {
     }
 
     return path
+  }
+  /**
+   * @param {Array.<*>} items
+   * @param {Function} id
+   * @returns {Array.<*>}
+   */
+  static unique (items, id) {
+    const map = new Map()
+    for (const x of items) {
+      map.set(id(x), x)
+    }
+    return [...map.values()]
   }
 }
 
