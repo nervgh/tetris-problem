@@ -633,9 +633,8 @@ class TetrisProblemSolver {
           figure.clone().move([-1, 0]), // left
           figure.clone().move([1, 0]), // right
           // figure.clone().move([0, 1]), // down TODO: Are we be able to make a step down?
-          // all rotations
           // TODO: we should check an ability to rotate a figure
-          ...TetrisProblemSolver.getPermutationsOfFigureAtPoint(figure, figure.getCenter())
+          figure.clone().rotate(90)
         ]
         const states = TetrisProblemSolver.getLocatableStatesOnly(world, untrustedStates)
         const nodes = states.map(state => {
